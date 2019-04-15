@@ -9,16 +9,17 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v2"
 )
 
 // Peer config
 var peerConnectionConfig = webrtc.Configuration{
-	ICEServers: []webrtc.ICEServer{
-		{
-			URLs: []string{"stun:stun.l.google.com:19302"},
-		},
-	},
+	// ICEServers: []webrtc.ICEServer{
+	// 	{
+	// 		URLs: []string{"stun:stun.l.google.com:19302"},
+	// 	},
+	// },
 	SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 }
 
@@ -44,6 +45,10 @@ var (
 
 	// Broadcast channels
 	broadcastHub = newHub()
+)
+
+const (
+	rtcpPLIInterval = time.Second * 3
 )
 
 func room(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +78,15 @@ func room(w http.ResponseWriter, r *http.Request) {
 		checkError(err)
 
 		pubReceiver.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
+			go func() {
+				ticker := time.NewTicker(rtcpPLIInterval)
+				for range ticker.C {
+					if rtcpSendErr := pubReceiver.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: remoteTrack.SSRC()}}); rtcpSendErr != nil {
+						checkError(rtcpSendErr)
+					}
+				}
+			}()
+
 			if remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeVP8 || remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeVP9 || remoteTrack.PayloadType() == webrtc.DefaultPayloadTypeH264 {
 
 				// Create a local video track, all our SFU clients will be fed via this track
@@ -136,12 +150,12 @@ func room(w http.ResponseWriter, r *http.Request) {
 		checkError(c.WriteMessage(mt, []byte(answer.SDP)))
 
 		// Register incoming channel
-		pubReceiver.OnDataChannel(func(d *webrtc.DataChannel) {
-			d.OnMessage(func(msg webrtc.DataChannelMessage) {
-				// Broadcast the data to subSenders
-				broadcastHub.broadcastChannel <- msg.Data
-			})
-		})
+		// pubReceiver.OnDataChannel(func(d *webrtc.DataChannel) {
+		// 	d.OnMessage(func(msg webrtc.DataChannelMessage) {
+		// 		// Broadcast the data to subSenders
+		// 		broadcastHub.broadcastChannel <- msg.Data
+		// 	})
+		// })
 	} else {
 
 		// Create a new PeerConnection
@@ -149,9 +163,9 @@ func room(w http.ResponseWriter, r *http.Request) {
 		checkError(err)
 
 		// Register data channel creation handling
-		subSender.OnDataChannel(func(d *webrtc.DataChannel) {
-			broadcastHub.addListener(d)
-		})
+		// subSender.OnDataChannel(func(d *webrtc.DataChannel) {
+		// 	broadcastHub.addListener(d)
+		// })
 
 		// Waiting for publisher track finish
 		for {

@@ -15,7 +15,8 @@
 </head>
 
 <body>
-<video id="video1" width="320" height="240" autoplay muted controls></video> <br />
+<video id="video1" width="320" height="240" autoplay muted controls></video>
+<video id="video2" width="320" height="240" autoplay muted controls></video> <br />
 <input id="msginput" type="text" style="width: 320px;height: 24px;" placeholder="typing here..." onkeydown="sendMessage(this)"><br />
 
 <button class="sessbtn" onclick="window.createSession(true)">Publish</button>
@@ -109,7 +110,7 @@ window.createSession = isPublisher => {
 
             <!-- console.log("Subcriber ontrack") -->
             pc.ontrack = function (event) {
-                var el = document.getElementById('video1')
+                var el = document.getElementById('video2')
                 el.srcObject = event.streams[0]
                 el.autoplay = true
                 el.controls = true
