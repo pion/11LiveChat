@@ -17,7 +17,7 @@ func checkError(err error) {
 	}
 }
 
-func init() {
+func Init() {
 
 	// Generate pem file for https
 	genPem()
@@ -35,6 +35,7 @@ func init() {
 }
 
 func main() {
+	Init()
 	if err := prometheus.Register(prommod.NewCollector("sfu-ws")); err != nil {
 		panic(err)
 	}
