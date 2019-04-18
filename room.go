@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v2"
@@ -62,6 +63,10 @@ func room(w http.ResponseWriter, r *http.Request) {
 
 	// Read sdp from websocket
 	mt, msg, err := c.ReadMessage()
+
+	//TODO: record SDP to prometheus
+	spew.Dump("<- SDP")
+
 	checkError(err)
 
 	if atomic.LoadInt32(&pubCount) == 0 {

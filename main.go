@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/pion/webrtc/v2"
 	"github.com/povilasv/prommod"
@@ -20,7 +21,16 @@ func checkError(err error) {
 func Init() {
 
 	// Generate pem file for https
-	genPem()
+
+	if _, err := os.Stat("cert.pem"); os.IsNotExist(err) {
+		fmt.Println("Generating perm")
+		genPem()
+	}
+
+	if _, err := os.Stat("key.pem"); os.IsNotExist(err) {
+		fmt.Println("Generating perm")
+		genPem()
+	}
 
 	// Create a MediaEngine object to configure the supported codec
 	m = webrtc.MediaEngine{}
@@ -49,6 +59,7 @@ func main() {
 	http.HandleFunc("/ws", room)
 
 	// Html handle func
+	http.HandleFunc("/sfu.js", js)
 	http.HandleFunc("/", web)
 
 	// Support https, so we can test by lan
