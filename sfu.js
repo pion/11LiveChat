@@ -1,18 +1,31 @@
+
+var log = msg => {
+    console.log(msg)
+}
+
 var sock = null;
 var wsuri = "wss://" + location.host + "/ws";
 window.onload = function() {
     try {
         sock = new WebSocket(wsuri);
 
-        // 3. when receive websocket sdp, save it to textfield
         sock.onmessage = function(e) {
-            // 如果不需要展示的话就不用写到 textarea 里面
-            // document.getElementById('SDPReceive').value = e.data
+            log("SDP chrome \<- sfu:\n" + e.data)
+
+            // 2. receive websocket sdp which I am publish or subscribe
 
             // call setRemoteDescription
-         window.startSession(e.data)
+
+            var wsMsg = JSON.parse(e.data);
+
+            if (wsMsg.Type == "publish") {
+                window.processRcvSDPPublish(wsMsg.Sdp)
+            }
+
+            // window.processRcvSDPSubscribe(e.data)
         }
     } catch (e) {
+        log(e)
     }
 };
 
@@ -24,9 +37,8 @@ window.Pub = () => {
         ]
     })
 
-    console.log("pub")
 
-    // 1. getmedia and setLocalDescription
+    // 0. getmedia and setLocalDescription
     navigator.mediaDevices.getUserMedia({ video: true, audio: true})
         .then(stream => {
             pcPublish.addStream(document.getElementById('local').srcObject = stream)
@@ -35,27 +47,24 @@ window.Pub = () => {
                 .catch(log)
         }).catch(log)
 
-    // 2. send publish sdp when ice done
+    // 1. send publish sdp
     pcPublish.onicecandidate = event => {
         if (event.candidate === null) {
-            document.getElementById('publishSDP').value = pcPublish.localDescription.sdp;
-            sock.send(pcPublish.localDescription.sdp);
+            log("SDP chrome ->  sfu:\n" + pcPublish.localDescription.sdp)
+
+
+            var sendData = {type:'publish', sdp:pcPublish.localDescription.sdp}
+            sock.send(JSON.stringify(sendData));
         }
     }
 
 
-    // 4. receive sdp then called
-    window.startSession = (sd) => {
-        // 直接传參进来就好了
-        // let sd = document.getElementById('SDPReceive').value
-        if (sd === '') {
-            return alert('Session Description must not be empty')
-        }
-
+    // 3. receive sdp 
+    window.processRcvSDPPublish = (sd) => {
         try {
             pcPublish.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd}))
         } catch (e) {
-            alert(e)
+            log(e)
         }
     }
 
@@ -66,7 +75,7 @@ window.Pub = () => {
     // }
 
     // show sdp info
-    document.getElementById('signalingContainer').style = 'display: block'
+    // document.getElementById('signalingContainer').style = 'display: block'
 }
 
 
@@ -77,7 +86,7 @@ window.Sub = () => {
     })
 
 
-    // 1 send publish sdp
+    // 1. send subscribe  sdp
     pcSubcribe.onicecandidate = event => {
         if (event.candidate === null) {
             document.getElementById('publishSDP').value = pcSubcribe.localDescription.sdp;
@@ -92,11 +101,21 @@ window.Sub = () => {
         .then(d => pcSubcribe.setLocalDescription(d))
         .catch(log)
 
-        pcSubcribe.ontrack = function (event) {
-            var el = document.getElementById('remote')
-            el.srcObject = event.streams[0]
-            el.autoplay = true
-            el.controls = true
+    // 4. receive data
+    pcSubcribe.ontrack = function (event) {
+        var el = document.getElementById('remote')
+        el.srcObject = event.streams[0]
+        el.autoplay = true
+        el.controls = true
+    }
+
+    // 3. receive sdp 
+    window.processRcvSDPSubscribe = (sd) => {
+        try {
+            pcSubcribe.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd}))
+        } catch (e) {
+            log(e)
         }
+    }
 }
 

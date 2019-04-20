@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"sync"
 
-	"sync/atomic"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -52,6 +52,11 @@ const (
 	rtcpPLIInterval = time.Second * 3
 )
 
+type wsMsg struct {
+	Type string
+	Sdp  string
+}
+
 func room(w http.ResponseWriter, r *http.Request) {
 
 	// Websocket client
@@ -63,14 +68,23 @@ func room(w http.ResponseWriter, r *http.Request) {
 
 	// Read sdp from websocket
 	mt, msg, err := c.ReadMessage()
-
-	//TODO: record SDP to prometheus
-	spew.Dump("<- SDP")
-
 	checkError(err)
 
-	if atomic.LoadInt32(&pubCount) == 0 {
-		atomic.AddInt32(&pubCount, 1)
+	wsData := wsMsg{}
+	if err := json.Unmarshal(msg, &wsData); err != nil {
+		checkError(err)
+	}
+
+	//TODO: record SDP to prometheus
+
+	// spew.Dump("<- SDP")
+	spew.Dump(wsData)
+
+	sdp := wsData.Sdp
+
+	if wsData.Type == "publish" {
+
+		// receive chrome publish sdp
 
 		// Create a new RTCPeerConnection
 		pubReceiver, err = api.NewPeerConnection(peerConnectionConfig)
@@ -140,7 +154,7 @@ func room(w http.ResponseWriter, r *http.Request) {
 		// Set the remote SessionDescription
 		checkError(pubReceiver.SetRemoteDescription(
 			webrtc.SessionDescription{
-				SDP:  string(msg),
+				SDP:  string(sdp),
 				Type: webrtc.SDPTypeOffer,
 			}))
 
@@ -152,16 +166,21 @@ func room(w http.ResponseWriter, r *http.Request) {
 		checkError(pubReceiver.SetLocalDescription(answer))
 
 		// Send server sdp to publisher
-		checkError(c.WriteMessage(mt, []byte(answer.SDP)))
+		dataToClient := wsMsg{
+			Type: "publish",
+			Sdp:  answer.SDP,
+		}
 
-		// Register incoming channel
-		// pubReceiver.OnDataChannel(func(d *webrtc.DataChannel) {
-		// 	d.OnMessage(func(msg webrtc.DataChannelMessage) {
-		// 		// Broadcast the data to subSenders
-		// 		broadcastHub.broadcastChannel <- msg.Data
-		// 	})
-		// })
-	} else {
+		byteToClient, err := json.Marshal(dataToClient)
+		checkError(err)
+
+		if err := c.WriteMessage(mt, byteToClient); err != nil {
+			checkError(err)
+		}
+
+	}
+
+	if wsData.Type == "subscribe" {
 
 		// Create a new PeerConnection
 		subSender, err := api.NewPeerConnection(peerConnectionConfig)
@@ -200,7 +219,7 @@ func room(w http.ResponseWriter, r *http.Request) {
 		// Set the remote SessionDescription
 		checkError(subSender.SetRemoteDescription(
 			webrtc.SessionDescription{
-				SDP:  string(msg),
+				SDP:  string(sdp),
 				Type: webrtc.SDPTypeOffer,
 			}))
 
