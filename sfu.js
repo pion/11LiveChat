@@ -1,15 +1,18 @@
 var sock = null;
 var wsuri = "wss://" + location.host + "/ws";
 window.onload = function() {
-    console.log("onload")
-    sock = new WebSocket(wsuri);
+    try {
+        sock = new WebSocket(wsuri);
 
-    // 3. when receive websocket sdp, save it to textfield
-    sock.onmessage = function(e) {
-        document.getElementById('SDPReceive').value = e.data
+        // 3. when receive websocket sdp, save it to textfield
+        sock.onmessage = function(e) {
+            // 如果不需要展示的话就不用写到 textarea 里面
+            // document.getElementById('SDPReceive').value = e.data
 
-        // call setRemoteDescription
-        window.startSession()
+            // call setRemoteDescription
+         window.startSession(e.data)
+        }
+    } catch (e) {
     }
 };
 
@@ -42,8 +45,9 @@ window.Pub = () => {
 
 
     // 4. receive sdp then called
-    window.startSession = () => {
-        let sd = document.getElementById('SDPReceive').value
+    window.startSession = (sd) => {
+        // 直接传參进来就好了
+        // let sd = document.getElementById('SDPReceive').value
         if (sd === '') {
             return alert('Session Description must not be empty')
         }
