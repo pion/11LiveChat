@@ -22,7 +22,12 @@ window.onload = function() {
                 window.processRcvSDPPublish(wsMsg.Sdp)
             }
 
-            // window.processRcvSDPSubscribe(e.data)
+            if (wsMsg.Type == "subscribe") {
+                window.processRcvSDPSubscribe(wsMsg.Sdp)
+            }
+        }
+        sock.onclose = function(e) {
+            alert("closed")
         }
     } catch (e) {
         log(e)
@@ -51,8 +56,6 @@ window.Pub = () => {
     pcPublish.onicecandidate = event => {
         if (event.candidate === null) {
             log("SDP chrome ->  sfu:\n" + pcPublish.localDescription.sdp)
-
-
             var sendData = {type:'publish', sdp:pcPublish.localDescription.sdp}
             sock.send(JSON.stringify(sendData));
         }
@@ -89,8 +92,9 @@ window.Sub = () => {
     // 1. send subscribe  sdp
     pcSubcribe.onicecandidate = event => {
         if (event.candidate === null) {
-            document.getElementById('publishSDP').value = pcSubcribe.localDescription.sdp;
-            sock.send(pcSubcribe.localDescription.sdp);
+            log("SDP chrome ->  sfu:\n" + pcSubcribe.localDescription.sdp)
+            var sendData = {type:'subscribe', sdp:pcSubcribe.localDescription.sdp}
+            sock.send(JSON.stringify(sendData));
         }
     }
 

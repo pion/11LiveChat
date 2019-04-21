@@ -57,14 +57,19 @@ type wsMsg struct {
 	Sdp  string
 }
 
-func room(w http.ResponseWriter, r *http.Request) {
+// var c *websocket.Conn
+
+func ws(w http.ResponseWriter, r *http.Request) {
 
 	// Websocket client
+
+	// var err1 error
 	c, err := upgrader.Upgrade(w, r, nil)
 	checkError(err)
-	defer func() {
-		checkError(c.Close())
-	}()
+
+	// defer func() {
+	// 	checkError(c.Close())
+	// }()
 
 	// Read sdp from websocket
 	mt, msg, err := c.ReadMessage()
@@ -186,11 +191,6 @@ func room(w http.ResponseWriter, r *http.Request) {
 		subSender, err := api.NewPeerConnection(peerConnectionConfig)
 		checkError(err)
 
-		// Register data channel creation handling
-		// subSender.OnDataChannel(func(d *webrtc.DataChannel) {
-		// 	broadcastHub.addListener(d)
-		// })
-
 		// Waiting for publisher track finish
 		for {
 			videoTrackLock.RLock()
@@ -230,7 +230,16 @@ func room(w http.ResponseWriter, r *http.Request) {
 		// Sets the LocalDescription, and starts our UDP listeners
 		checkError(subSender.SetLocalDescription(answer))
 
-		// Send server sdp to subscriber
-		checkError(c.WriteMessage(mt, []byte(answer.SDP)))
+		// Send sdp
+		dataToClient := wsMsg{
+			Type: "subscribe",
+			Sdp:  answer.SDP,
+		}
+		byteToClient, err := json.Marshal(dataToClient)
+		checkError(err)
+
+		if err := c.WriteMessage(mt, byteToClient); err != nil {
+			checkError(err)
+		}
 	}
 }

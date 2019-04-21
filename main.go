@@ -56,9 +56,9 @@ func main() {
 	http.Handle("/metrics", promhttp.Handler())
 
 	// Websocket handle func
-	http.HandleFunc("/ws", room)
+	http.HandleFunc("/ws", ws)
 
-	// Html handle func
+	// web handle func
 	http.HandleFunc("/sfu.js", js)
 	http.HandleFunc("/", web)
 
