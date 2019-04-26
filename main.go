@@ -61,6 +61,8 @@ func main() {
 	// web handle func
 	http.HandleFunc("/sfu.js", js)
 	http.HandleFunc("/", web)
+	http.HandleFunc("/alice", alice)
+	http.HandleFunc("/bob", bob)
 
 	// Support https, so we can test by lan
 	fmt.Println("Web listening :" + *port)

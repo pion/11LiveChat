@@ -1,6 +1,16 @@
-# 11LiveChat
+# 11LiveChat - Just a DEMO
 
 11LiveChat is a demo for a chatroom One to One. Basiclly from the examples `sfu-ws`.
+
+
+# How to Run
+
+* chrome1 open `https://x.x.x.x:8443/alice`
+* click publish in chrome1
+* chrome2 from another pc/laptop open `https://x.x.x.x:8443/bob`
+* click subscribe in chrome2
+* click publish in chrome2
+* click subscribe in chrome1
 
 
 # Arch

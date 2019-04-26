@@ -19,11 +19,11 @@ window.onload = function() {
             var wsMsg = JSON.parse(e.data);
 
             if (wsMsg.Type == "publish") {
-                window.processRcvSDPPublish(wsMsg.Sdp)
+                window.processRcvSDPPublish(wsMsg.Sdp, wsMsg.name)
             }
 
             if (wsMsg.Type == "subscribe") {
-                window.processRcvSDPSubscribe(wsMsg.Sdp)
+                window.processRcvSDPSubscribe(wsMsg.Sdp, wsMsg.name)
             }
         }
         sock.onclose = function(e) {
@@ -36,7 +36,7 @@ window.onload = function() {
 
 
 // click pub button
-window.Pub = () => {
+window.Pub = name => {
     let pcPublish = new RTCPeerConnection({
         iceServers: [
         ]
@@ -56,16 +56,16 @@ window.Pub = () => {
     pcPublish.onicecandidate = event => {
         if (event.candidate === null) {
             log("SDP chrome ->  sfu:\n" + pcPublish.localDescription.sdp)
-            var sendData = {type:'publish', sdp:pcPublish.localDescription.sdp}
+            var sendData = {type:'publish', sdp:pcPublish.localDescription.sdp, name:name}
             sock.send(JSON.stringify(sendData));
         }
     }
 
 
     // 3. receive sdp 
-    window.processRcvSDPPublish = (sd) => {
+    window.processRcvSDPPublish = (sd,name) => {
         try {
-            pcPublish.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd}))
+            pcPublish.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd, name:name}))
         } catch (e) {
             log(e)
         }
@@ -82,7 +82,7 @@ window.Pub = () => {
 }
 
 
-window.Sub = () => {
+window.Sub = name => {
     let pcSubcribe = new RTCPeerConnection({
         iceServers: [
         ]
@@ -93,7 +93,7 @@ window.Sub = () => {
     pcSubcribe.onicecandidate = event => {
         if (event.candidate === null) {
             log("SDP chrome ->  sfu:\n" + pcSubcribe.localDescription.sdp)
-            var sendData = {type:'subscribe', sdp:pcSubcribe.localDescription.sdp}
+            var sendData = {type:'subscribe', sdp:pcSubcribe.localDescription.sdp, name:name}
             sock.send(JSON.stringify(sendData));
         }
     }
@@ -114,9 +114,9 @@ window.Sub = () => {
     }
 
     // 3. receive sdp 
-    window.processRcvSDPSubscribe = (sd) => {
+    window.processRcvSDPSubscribe = (sd, name) => {
         try {
-            pcSubcribe.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd}))
+            pcSubcribe.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd, name:name}))
         } catch (e) {
             log(e)
         }
