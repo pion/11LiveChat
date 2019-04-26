@@ -5,9 +5,9 @@
 
 # How to Run
 
-* chrome1 open `https://x.x.x.x:8443/alice`
+* chrome1 open `https://x.x.x.x:8443/alice.html`
 * click publish in chrome1
-* chrome2 from another pc/laptop open `https://x.x.x.x:8443/bob`
+* chrome2 from another pc/laptop open `https://x.x.x.x:8443/bob.html`
 * click subscribe in chrome2
 * click publish in chrome2
 * click subscribe in chrome1
