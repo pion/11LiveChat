@@ -58,6 +58,7 @@ func main() {
 	// Websocket handle func
 	http.HandleFunc("/ws", ws)
 
+	// web handle func
 	http.Handle("/", http.FileServer(http.Dir(".")))
 
 	// Support https, so we can test by lan
