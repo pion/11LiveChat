@@ -67,15 +67,9 @@ type avTrack struct {
 // var c *websocket.Conn
 
 func getRcvMedia(name string, media map[string]avTrack) avTrack {
-
-	if name == "alice" {
-		return media["bob"]
+	if v, ok := media[name]; ok {
+		return v
 	}
-
-	if name == "bob" {
-		return media["alice"]
-	}
-
 	return avTrack{}
 }
 
@@ -175,7 +169,9 @@ func ws(w http.ResponseWriter, r *http.Request) {
 					checkError(err)
 
 					m.Audio = audioTrack
-
+					if _, ok := mediaInfo[name]; !ok {
+						mediaInfo[name] = m
+					}
 					rtpBuf := make([]byte, 1400)
 					for {
 						i, err := remoteTrack.Read(rtpBuf)
@@ -237,12 +233,14 @@ func ws(w http.ResponseWriter, r *http.Request) {
 			// 		break
 			// 	}
 			// }
-
-			_, err = pcSub.AddTrack(m.Video)
-			checkError(err)
-
-			_, err = pcSub.AddTrack(m.Audio)
-			checkError(err)
+			if m.Video != nil {
+				_, err = pcSub.AddTrack(m.Video)
+				checkError(err)
+			}
+			if m.Audio != nil {
+				_, err = pcSub.AddTrack(m.Audio)
+				checkError(err)
+			}
 
 			checkError(pcSub.SetRemoteDescription(
 				webrtc.SessionDescription{
