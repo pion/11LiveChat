@@ -17,11 +17,11 @@ import (
 
 // Peer config
 var peerConnectionConfig = webrtc.Configuration{
-	// ICEServers: []webrtc.ICEServer{
-	// 	{
-	// 		URLs: []string{"stun:stun.l.google.com:19302"},
-	// 	},
-	// },
+	ICEServers: []webrtc.ICEServer{
+		{
+			URLs: []string{"stun:stun.l.google.com:19302"},
+		},
+	},
 	SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 }
 
