@@ -38,9 +38,9 @@ window.onload = function() {
 // click pub button
 window.Pub = name => {
     let pcPublish = new RTCPeerConnection({
-        iceServers: [{
-            urls: 'stun:stun.l.google.com:19302'
-        }]
+        // iceServers: [{
+        //     urls: 'stun:stun.l.google.com:19302'
+        // }]
     })
 
 
@@ -85,9 +85,9 @@ window.Pub = name => {
 
 window.Sub = name => {
     let pcSubcribe = new RTCPeerConnection({
-        iceServers: [{
-            urls: 'stun:stun.l.google.com:19302'
-        }]
+        // iceServers: [{
+        //     urls: 'stun:stun.l.google.com:19302'
+        // }]
     })
 
 

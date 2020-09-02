@@ -6,20 +6,21 @@ import (
 	"net/http"
 	"sync"
 
+	"fmt"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtcp"
 
-	// "github.com/pion/webrtc"
-	"github.com/pion/webrtc/v2"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/pion/webrtc/v3"
 )
 
 // Peer config
 var peerConnectionConfig = webrtc.Configuration{
 	ICEServers: []webrtc.ICEServer{
 		{
-			URLs: []string{"stun:stun.l.google.com:19302"},
+			// URLs: []string{"stun:stun.l.google.com:19302"},
 		},
 	},
 	SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
@@ -97,8 +98,8 @@ func ws(w http.ResponseWriter, r *http.Request) {
 
 		//TODO: record SDP to prometheus
 
-		// spew.Dump("<- SDP")
-		// spew.Dump("ws receive")
+		spew.Dump("<- SDP")
+		spew.Dump("ws receive")
 
 		sdp := wsData.Sdp
 		name := wsData.Name
@@ -206,6 +207,11 @@ func ws(w http.ResponseWriter, r *http.Request) {
 				Sdp:  answer.SDP,
 				Name: name,
 			}
+
+			fmt.Println("-------------------client SDP-------------")
+			fmt.Println(sdp)
+			fmt.Println("-------------------server SDP-------------")
+			fmt.Println(answer.SDP)
 
 			byteToClient, err := json.Marshal(dataToClient)
 			checkError(err)

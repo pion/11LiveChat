@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 	"github.com/povilasv/prommod"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
