@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 
 	"fmt"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Peer config
@@ -75,6 +78,8 @@ func getRcvMedia(name string, media map[string]avTrack) avTrack {
 }
 
 func ws(w http.ResponseWriter, r *http.Request) {
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
 	// Websocket client
 
@@ -187,7 +192,16 @@ func ws(w http.ResponseWriter, r *http.Request) {
 				}
 			})
 
+			// pcPub.OnICECandidate(func(i *webrtc.ICECandidate) {
+			// 	spew.Dump(i)
+			// 	// Send ICE Candidate via Websocket/HTTP/$X to remote peer
+			// })
+
+			// // Listen for ICE Candidates from the remote peer
+			// pcPub.AddICECandidate(remoteCandidate)
+
 			// Set the remote SessionDescription
+
 			checkError(pcPub.SetRemoteDescription(
 				webrtc.SessionDescription{
 					SDP:  string(sdp),
@@ -198,8 +212,10 @@ func ws(w http.ResponseWriter, r *http.Request) {
 			answer, err := pcPub.CreateAnswer(nil)
 			checkError(err)
 
+			gatherComplete := webrtc.GatheringCompletePromise(pcPub)
 			// Sets the LocalDescription, and starts our UDP listeners
 			checkError(pcPub.SetLocalDescription(answer))
+			<-gatherComplete
 
 			// Send server sdp to publisher
 			dataToClient := wsMsg{
@@ -208,10 +224,11 @@ func ws(w http.ResponseWriter, r *http.Request) {
 				Name: name,
 			}
 
-			fmt.Println("-------------------client SDP-------------")
-			fmt.Println(sdp)
-			fmt.Println("-------------------server SDP-------------")
-			fmt.Println(answer.SDP)
+			// log.Info().Str("foo", "bar").Msg("Hello world")
+			log.Info().Msg("-------------------Pub client SDP-------------")
+			log.Info().Msg(sdp)
+			log.Info().Msg("-------------------Pub server SDP-------------")
+			log.Info().Msg(answer.SDP)
 
 			byteToClient, err := json.Marshal(dataToClient)
 			checkError(err)
@@ -257,8 +274,10 @@ func ws(w http.ResponseWriter, r *http.Request) {
 			answer, err := pcSub.CreateAnswer(nil)
 			checkError(err)
 
+			gatherComplete := webrtc.GatheringCompletePromise(pcSub)
 			// Sets the LocalDescription, and starts our UDP listeners
 			checkError(pcSub.SetLocalDescription(answer))
+			<-gatherComplete
 
 			// Send sdp
 			dataToClient := wsMsg{
