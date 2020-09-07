@@ -25,6 +25,11 @@ window.onload = function() {
             if (wsMsg.Type == "subscribe") {
                 window.processRcvSDPSubscribe(wsMsg.Sdp, wsMsg.name)
             }
+
+            if (wsMsg.Type == "candidate") {
+                alert(wsMsg);
+                window.processAddCandidate(wsMsg.CandidateInfo)
+            }
         }
         sock.onclose = function(e) {
             alert("closed")

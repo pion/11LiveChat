@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"sync"
 
-	"fmt"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -58,9 +58,10 @@ const (
 )
 
 type wsMsg struct {
-	Type string
-	Sdp  string
-	Name string
+	Type          string
+	Sdp           string
+	Name          string
+	CandidateInfo string
 }
 
 type avTrack struct {
@@ -68,7 +69,38 @@ type avTrack struct {
 	Audio *webrtc.Track
 }
 
-// var c *websocket.Conn
+func sendWsMsg(c *websocket.Conn, mt int, dataToClient wsMsg) error {
+
+	byteToClient, err := json.Marshal(dataToClient)
+
+	if err != nil {
+		return err
+	}
+
+	if err := c.WriteMessage(mt, byteToClient); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getAnswerSDP(pc *webrtc.PeerConnection) (string, error) {
+	answer, err := pc.CreateAnswer(nil)
+
+	if err != nil {
+		return "", fmt.Errorf("create answer %w", err)
+	}
+
+	gatherComplete := webrtc.GatheringCompletePromise(pc)
+	// Sets the LocalDescription, and starts our UDP listeners
+	if err := pc.SetLocalDescription(answer); err != nil {
+		return "", fmt.Errorf("SetLocalDescription %w", err)
+	}
+	<-gatherComplete
+
+	sdpAnswer := pc.LocalDescription().SDP
+	return sdpAnswer, nil
+}
 
 func getRcvMedia(name string, media map[string]avTrack) avTrack {
 	if v, ok := media[name]; ok {
@@ -79,11 +111,9 @@ func getRcvMedia(name string, media map[string]avTrack) avTrack {
 
 func ws(w http.ResponseWriter, r *http.Request) {
 
+	log.Logger = log.With().Caller().Logger()
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
-	// Websocket client
-
-	// var err1 error
 	c, err := upgrader.Upgrade(w, r, nil)
 	checkError(err)
 
@@ -192,51 +222,59 @@ func ws(w http.ResponseWriter, r *http.Request) {
 				}
 			})
 
-			// pcPub.OnICECandidate(func(i *webrtc.ICECandidate) {
-			// 	spew.Dump(i)
-			// 	// Send ICE Candidate via Websocket/HTTP/$X to remote peer
-			// })
+			pcPub.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+				log.Info().Msgf("PUB ICE Connection State has changed: %s\n", connectionState.String())
+			})
 
-			// // Listen for ICE Candidates from the remote peer
-			// pcPub.AddICECandidate(remoteCandidate)
+			pcPub.OnICECandidate(func(candi *webrtc.ICECandidate) {
 
-			// Set the remote SessionDescription
+				log.Info().Msgf("OnICECandidate %#v", candi)
+				// spew.Dump(candi)
 
-			checkError(pcPub.SetRemoteDescription(
+				// if candi == nil {
+				// 	return
+				// }
+
+				// dataToClient := wsMsg{
+				// 	Type:          "candidate",
+				// 	CandidateInfo: candi.ToJSON().Candidate,
+				// }
+				// if err := sendWsMsg(c, mt, dataToClient); err != nil {
+				// 	panic(err)
+				// }
+			})
+
+			if err := pcPub.SetRemoteDescription(
 				webrtc.SessionDescription{
 					SDP:  string(sdp),
 					Type: webrtc.SDPTypeOffer,
-				}))
+				}); err != nil {
+				log.Error().Msgf("ERROR: %#v", err)
+				continue
+			}
 
-			// Create answer
-			answer, err := pcPub.CreateAnswer(nil)
-			checkError(err)
+			sdpAnswer, err := getAnswerSDP(pcPub)
 
-			gatherComplete := webrtc.GatheringCompletePromise(pcPub)
-			// Sets the LocalDescription, and starts our UDP listeners
-			checkError(pcPub.SetLocalDescription(answer))
-			<-gatherComplete
+			if err != nil {
+				log.Error().Msgf("ERROR: %#v", err)
+				continue
+			}
 
 			// Send server sdp to publisher
 			dataToClient := wsMsg{
 				Type: "publish",
-				Sdp:  answer.SDP,
+				Sdp:  sdpAnswer,
 				Name: name,
 			}
 
-			// log.Info().Str("foo", "bar").Msg("Hello world")
 			log.Info().Msg("-------------------Pub client SDP-------------")
 			log.Info().Msg(sdp)
 			log.Info().Msg("-------------------Pub server SDP-------------")
-			log.Info().Msg(answer.SDP)
+			log.Info().Msg(sdpAnswer)
 
-			byteToClient, err := json.Marshal(dataToClient)
-			checkError(err)
-
-			if err := c.WriteMessage(mt, byteToClient); err != nil {
-				checkError(err)
+			if err := sendWsMsg(c, mt, dataToClient); err != nil {
+				log.Error().Msgf("ERROR: %#v", err)
 			}
-
 		}
 
 		if wsData.Type == "subscribe" {
@@ -271,26 +309,24 @@ func ws(w http.ResponseWriter, r *http.Request) {
 					Type: webrtc.SDPTypeOffer,
 				}))
 
-			answer, err := pcSub.CreateAnswer(nil)
-			checkError(err)
-
-			gatherComplete := webrtc.GatheringCompletePromise(pcSub)
-			// Sets the LocalDescription, and starts our UDP listeners
-			checkError(pcSub.SetLocalDescription(answer))
-			<-gatherComplete
+			sdpAnswer, err := getAnswerSDP(pcSub)
+			if err != nil {
+				log.Error().Msgf("ERROR: %#v", err)
+				continue
+			}
 
 			// Send sdp
 			dataToClient := wsMsg{
 				Type: "subscribe",
-				Sdp:  answer.SDP,
+				// Sdp:  answer.SDP,
+				Sdp:  sdpAnswer,
 				Name: name,
 			}
-			byteToClient, err := json.Marshal(dataToClient)
-			checkError(err)
 
-			if err := c.WriteMessage(mt, byteToClient); err != nil {
-				checkError(err)
+			if err := sendWsMsg(c, mt, dataToClient); err != nil {
+				log.Error().Msgf("ERROR: %#v", err)
 			}
+
 		}
 	}
 }
