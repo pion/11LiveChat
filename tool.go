@@ -14,11 +14,16 @@ import (
 func genPem() {
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	checkError(err)
+
+	if err != nil {
+		panic(err)
+	}
 
 	SNLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	SN, err := rand.Int(rand.Reader, SNLimit)
-	checkError(err)
+	if err != nil {
+		panic(err)
+	}
 
 	template := x509.Certificate{
 		SerialNumber: SN,
@@ -36,16 +41,34 @@ func genPem() {
 	template.EmailAddresses = append(template.EmailAddresses, "test@test.com")
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	checkError(err)
+	if err != nil {
+		panic(err)
+	}
 
 	certFile, err := os.Create("cert.pem")
-	checkError(err)
-	checkError(pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes}))
-	checkError(certFile.Close())
+	if err != nil {
+		panic(err)
+	}
+
+	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes}); err != nil {
+		panic(err)
+	}
+
+	if err := certFile.Close(); err != nil {
+		panic(err)
+	}
 
 	keyFile, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	checkError(err)
-	// pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv.(*rsa.PrivateKey))})
-	checkError(pem.Encode(keyFile, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}))
-	checkError(keyFile.Close())
+	if err != nil {
+		panic(err)
+	}
+	if err := pem.Encode(keyFile, &pem.Block{Type: "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}); err != nil {
+		panic(err)
+	}
+	if err := keyFile.Close(); err != nil {
+		panic(err)
+	}
+
+	return
 }
