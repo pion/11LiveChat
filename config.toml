@@ -32,4 +32,4 @@ maxbuffertime = 1000
 
 [log]
 stats = true
-level = "debug"
+level = "trace"

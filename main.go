@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	// "github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/sourcegraph/jsonrpc2"
@@ -161,7 +162,12 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		}
 
 		me := sfu.MediaEngine{}
+		fmt.Println("--------------------SDP received------------------")
+		fmt.Printf("sid: %s\n", join.Sid)
+		fmt.Println(join.Offer.SDP)
+		fmt.Println("--------------------------------------------------")
 		err = me.PopulateFromSDP(join.Offer)
+		// spew.Dump(me)
 		if err != nil {
 			log.Errorf("connect: error creating peer: %v", err)
 			_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
