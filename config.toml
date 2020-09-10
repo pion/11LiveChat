@@ -31,5 +31,6 @@ maxbuffertime = 1000
 
 
 [log]
-stats = true
+# stats = true
+stats = false
 level = "trace"

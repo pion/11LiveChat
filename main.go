@@ -241,6 +241,9 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 				return
 			}
 
+			log.Debugf("------------New offer SDP-from sfu send to client-----------")
+			log.Debugf(offer.SDP)
+			log.Debugf("------------------------------------------------------------")
 			err = p.peer.SetLocalDescription(offer)
 			if err != nil {
 				log.Errorf("SetLocalDescription error: %v", err)

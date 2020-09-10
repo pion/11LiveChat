@@ -50,7 +50,7 @@ pcPublish.ontrack = function ({ track, streams }) {
       el.srcObject = streams[0]
       el.autoplay = true
 
-      document.getElementById('remoteVideos').appendChild(el)
+      document.getElementById('remote').appendChild(el)
     }
   }
 }
@@ -70,6 +70,7 @@ pcPublish.onicecandidate = event => {
 
 
 
+const id = uuidv4()
 
 
 
@@ -79,11 +80,10 @@ socket.addEventListener('message', async (event) => {
   // Listen for server renegotiation notifications
   if (!resp.id && resp.method === "offer") {
     log(`Got offer notification`)
-    await pc.setRemoteDescription(resp.params)
-    const answer = await pc.createAnswer()
-    await pc.setLocalDescription(answer)
+    await pcPublish.setRemoteDescription(resp.params)
+    const answer = await pcPublish.createAnswer()
+    await pcPublish.setLocalDescription(answer)
 
-    const id = uuid.v4()
     log(`Sending answer`)
     socket.send(JSON.stringify({
       method: "answer",
@@ -100,7 +100,6 @@ socket.addEventListener('message', async (event) => {
 const join = async () => {
     const offer = await pcPublish.createOffer()
     await pcPublish.setLocalDescription(offer)
-    const id = uuidv4()
 
     log("Sending join")
     log(pcPublish.localDescription)
@@ -121,7 +120,6 @@ const join = async () => {
                 log("onnegotiationneeded")
                 const offer = await pcPublish.createOffer()
                 await pcPublish.setLocalDescription(offer)
-                const id = uuid.v4()
                 socket.send(JSON.stringify({
                     method: "offer",
                     params: { desc: offer },
