@@ -39,12 +39,12 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true})
 const pcPublish = new RTCPeerConnection(config)
 
 
-pcPublish.oniceconnectionstatechange = e => log(`ICE connection state: ${pcPublish.iceConnectionState}`)
+pcPublish.oniceconnectionstatechange = e => log(`[rtc]ICE connection state: ${pcPublish.iceConnectionState}`)
 
 pcPublish.ontrack = function ({ track, streams }) {
-  log("ontrack")
+  log("[rtc]ontrack")
   if (track.kind === "video") {
-    log("got track")
+    log("[rtc]got track")
     track.onunmute = () => {
       let el = document.createElement(track.kind)
       el.srcObject = streams[0]
@@ -56,7 +56,7 @@ pcPublish.ontrack = function ({ track, streams }) {
 }
 
 pcPublish.onicecandidate = event => {
-  log("onicecandidate, sending")
+  log("[rtc]onicecandidate, sending")
   log(event.candidate)
   if (event.candidate !== null) {
     socket.send(JSON.stringify({
@@ -79,12 +79,12 @@ socket.addEventListener('message', async (event) => {
 
   // Listen for server renegotiation notifications
   if (!resp.id && resp.method === "offer") {
-    log(`Got offer notification`)
+    log(`[ws]Got offer notification`)
     await pcPublish.setRemoteDescription(resp.params)
     const answer = await pcPublish.createAnswer()
     await pcPublish.setLocalDescription(answer)
 
-    log(`Sending answer`)
+    log(`[ws]Sending answer`)
     socket.send(JSON.stringify({
       method: "answer",
       params: { desc: answer },
@@ -101,7 +101,7 @@ const join = async () => {
     const offer = await pcPublish.createOffer()
     await pcPublish.setLocalDescription(offer)
 
-    log("Sending join")
+    log("[ws]Sending join")
     log(pcPublish.localDescription)
     socket.send(JSON.stringify({
         method: "join",
@@ -113,11 +113,11 @@ const join = async () => {
     socket.addEventListener('message', (event) => {
         const resp = JSON.parse(event.data)
         if (resp.id === id) {
-            log(`Received publish answer`)
+            log(`[ws]Received publish answer`)
 
             // Hook this here so it's not called before joining
             pcPublish.onnegotiationneeded = async function () {
-                log("onnegotiationneeded")
+                log("[rtc]onnegotiationneeded")
                 const offer = await pcPublish.createOffer()
                 await pcPublish.setLocalDescription(offer)
                 socket.send(JSON.stringify({
@@ -129,17 +129,17 @@ const join = async () => {
                 socket.addEventListener('message', (event) => {
                     const resp = JSON.parse(event.data)
                     if (resp.id === id) {
-                        log(`Got renegotiation answer`)
+                        log(`[ws]Got renegotiation answer`)
                         pcPublish.setRemoteDescription(resp.result)
                     }
                 })
             }
 
-            log(`setRemoteDescription`)
+            log(`[rtc]setRemoteDescription`)
             // log(resp)
             pcPublish.setRemoteDescription(resp.result)
         } else if (resp.method == "trickle"){
-            log("receive trickle")
+            log("[ws]receive trickle")
             // log(resp.params)
             // const candidate: RTCIceCandidateInit = "a="+resp.params.candidate
             pcPublish.addIceCandidate(resp.params)
