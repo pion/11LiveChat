@@ -42,21 +42,21 @@ const pcPublish = new RTCPeerConnection(config)
 pcPublish.oniceconnectionstatechange = e => log(`[rtc]ICE connection state: ${pcPublish.iceConnectionState}`)
 
 pcPublish.ontrack = function ({ track, streams }) {
-  log("[rtc]ontrack")
   if (track.kind === "video") {
-    log("[rtc]got track")
-    track.onunmute = () => {
+    log("[rtc]ontrack video")
+    // track.onunmute = () => {
+    //   log("[rtc]onunmute")
       let el = document.createElement(track.kind)
       el.srcObject = streams[0]
       el.autoplay = true
 
       document.getElementById('remote').appendChild(el)
-    }
+    // }
   }
 }
 
 pcPublish.onicecandidate = event => {
-  log("[rtc]onicecandidate, sending")
+  log("[rtc]onicecandidate, sending trickle on ws")
   log(event.candidate)
   if (event.candidate !== null) {
     socket.send(JSON.stringify({
@@ -79,12 +79,14 @@ socket.addEventListener('message', async (event) => {
 
   // Listen for server renegotiation notifications
   if (!resp.id && resp.method === "offer") {
-    log(`[ws]Got offer notification`)
+    log(`[ws]receive offer`)
+    log(resp.params)
     await pcPublish.setRemoteDescription(resp.params)
     const answer = await pcPublish.createAnswer()
     await pcPublish.setLocalDescription(answer)
 
     log(`[ws]Sending answer`)
+    log(answer)
     socket.send(JSON.stringify({
       method: "answer",
       params: { desc: answer },
@@ -113,7 +115,8 @@ const join = async () => {
     socket.addEventListener('message', (event) => {
         const resp = JSON.parse(event.data)
         if (resp.id === id) {
-            log(`[ws]Received publish answer`)
+            log(`[ws]receive answer`)
+            log(resp.result)
 
             // Hook this here so it's not called before joining
             pcPublish.onnegotiationneeded = async function () {
@@ -140,8 +143,7 @@ const join = async () => {
             pcPublish.setRemoteDescription(resp.result)
         } else if (resp.method == "trickle"){
             log("[ws]receive trickle")
-            // log(resp.params)
-            // const candidate: RTCIceCandidateInit = "a="+resp.params.candidate
+            log(resp.params)
             pcPublish.addIceCandidate(resp.params)
         }
     })
@@ -160,46 +162,4 @@ window.Pub = () => {
     join()
 }
 
-
-// window.Sub = name => {
-//     let pcSubcribe = new RTCPeerConnection({
-//         // iceServers: [{
-//         //     urls: 'stun:stun.l.google.com:19302'
-//         // }]
-//     })
-
-
-//     // 1. send subscribe  sdp
-//     pcSubcribe.onicecandidate = event => {
-//         if (event.candidate === null) {
-//             log("SDP chrome ->  sfu:\n" + pcSubcribe.localDescription.sdp)
-//             var sendData = {type:'subscribe', sdp:pcSubcribe.localDescription.sdp, name:name}
-//             sock.send(JSON.stringify(sendData));
-//         }
-//     }
-
-//     pcSubcribe.addTransceiver('audio', {'direction': 'recvonly'})
-//     pcSubcribe.addTransceiver('video', {'direction': 'recvonly'})
-
-//     pcSubcribe.createOffer()
-//         .then(d => pcSubcribe.setLocalDescription(d))
-//         .catch(log)
-
-//     // 4. receive data
-//     pcSubcribe.ontrack = function (event) {
-//         var el = document.getElementById('remote')
-//         el.srcObject = event.streams[0]
-//         el.autoplay = true
-//         el.controls = true
-//     }
-
-//     // 3. receive sdp 
-//     window.processRcvSDPSubscribe = (sd, name) => {
-//         try {
-//             pcSubcribe.setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:sd, name:name}))
-//         } catch (e) {
-//             log(e)
-//         }
-//     }
-// }
 

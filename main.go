@@ -12,6 +12,7 @@ import (
 
 	// "github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
+	"github.com/pion/sdp/v2"
 	"github.com/pion/webrtc/v3"
 	"github.com/sourcegraph/jsonrpc2"
 	websocketjsonrpc2 "github.com/sourcegraph/jsonrpc2/websocket"
@@ -134,9 +135,28 @@ type Trickle struct {
 	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
 
+func dumpSDP(sdpStr string) error {
+	sdp := sdp.SessionDescription{}
+	if err := sdp.Unmarshal([]byte(sdpStr)); err != nil {
+		return err
+	}
+
+	for _, md := range sdp.MediaDescriptions {
+
+		for _, a := range md.Attributes {
+			if a.Key == "ssrc" {
+				// spew.Dump(a.Value)
+				log.Infof(a.Value)
+			}
+		}
+
+	}
+	return nil
+}
+
 // Handle RPC call
 func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	log.Infof("Handling......")
+	log.Infof("[main]Handling......")
 	p := forContext(ctx)
 
 	switch req.Method {
@@ -162,10 +182,11 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		}
 
 		me := sfu.MediaEngine{}
-		fmt.Println("--------------------SDP received------------------")
-		fmt.Printf("sid: %s\n", join.Sid)
-		fmt.Println(join.Offer.SDP)
-		fmt.Println("--------------------------------------------------")
+		fmt.Println("<--------------------SDP offer received------------------")
+		// fmt.Printf("sid: %s\n", join.Sid)
+		// fmt.Println(join.Offer.SDP)
+		dumpSDP(join.Offer.SDP)
+		fmt.Println("<--------------------------------------------------")
 		err = me.PopulateFromSDP(join.Offer)
 		// spew.Dump(me)
 		if err != nil {
@@ -188,7 +209,7 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 			break
 		}
 
-		log.Infof("peer %s join session %s", peer.ID(), join.Sid)
+		log.Infof("[main]peer %s join session %s", peer.ID(), join.Sid)
 
 		err = peer.SetRemoteDescription(join.Offer)
 		if err != nil {
@@ -209,6 +230,11 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 			})
 			break
 		}
+		fmt.Println("--------------------SDP send 1--------------------->")
+		// spew.Dump(answer.SDP)
+		// fmt.Println(answer.SDP)
+		dumpSDP(answer.SDP)
+		fmt.Println("------------------------------------------------->")
 
 		err = peer.SetLocalDescription(answer)
 		if err != nil {
@@ -222,7 +248,7 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 
 		// Notify user of trickle candidates
 		peer.OnICECandidate(func(c *webrtc.ICECandidate) {
-			log.Debugf("Sending ICE candidate")
+			log.Debugf("[rtc]OnICECandidate")
 			if c == nil {
 				// Gathering done
 				return
@@ -234,16 +260,16 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		})
 
 		peer.OnNegotiationNeeded(func() {
-			log.Debugf("on negotiation needed called")
+			log.Debugf("[rtc]OnNegotiationNeeded")
 			offer, err := p.peer.CreateOffer()
 			if err != nil {
 				log.Errorf("CreateOffer error: %v", err)
 				return
 			}
 
-			log.Debugf("------------New offer SDP-from sfu send to client-----------")
-			log.Debugf(offer.SDP)
-			log.Debugf("------------------------------------------------------------")
+			log.Debugf("------------New offer SDP-from sfu send to client---------->")
+			dumpSDP(offer.SDP)
+			log.Debugf("----------------------------------------------------------->")
 			err = p.peer.SetLocalDescription(offer)
 			if err != nil {
 				log.Errorf("SetLocalDescription error: %v", err)
@@ -257,6 +283,11 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 
 		p.peer = peer
 
+		fmt.Println("--------------------SDP send--------------------->")
+		// spew.Dump(answer.SDP)
+		// fmt.Println(answer.SDP)
+		dumpSDP(answer.SDP)
+		fmt.Println("------------------------------------------------->")
 		_ = conn.Reply(ctx, req.ID, answer)
 
 	case "offer":
@@ -325,7 +356,7 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 			break
 		}
 
-		log.Infof("peer %s answer", p.peer.ID())
+		log.Infof("[ws]<-- peer %s answer", p.peer.ID())
 
 		var negotiation Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
@@ -339,6 +370,7 @@ func (r *RPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Req
 		}
 
 		err = p.peer.SetRemoteDescription(negotiation.Desc)
+		dumpSDP(negotiation.Desc.SDP)
 		if err != nil {
 			log.Errorf("error setting remote description %s", err)
 		}

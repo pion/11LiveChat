@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/pion/ion-sfu v1.0.7
 	github.com/pion/rtcp v1.2.3
+	github.com/pion/sdp/v2 v2.4.0
 	github.com/pion/webrtc/v3 v3.0.0-beta.4.0.20200902134452-789ff0975342
 	github.com/povilasv/prommod v0.0.11
 	github.com/prometheus/client_golang v0.9.3
