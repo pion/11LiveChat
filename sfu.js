@@ -27,6 +27,7 @@ let localStream
 navigator.mediaDevices.getUserMedia({ video: true, audio: true})
     .then(stream => {
         let el = document.createElement("Video")
+        el.setAttribute('playsinline', 'playsinline');
         el.srcObject = stream
         el.autoplay = true
         el.controls = false
@@ -47,6 +48,7 @@ pcPublish.ontrack = function ({ track, streams }) {
     // track.onunmute = () => {
     //   log("[rtc]onunmute")
       let el = document.createElement(track.kind)
+      el.setAttribute('playsinline', 'playsinline');
       el.srcObject = streams[0]
       el.autoplay = true
 
